@@ -1,8 +1,52 @@
 package XML::SAX::Tap;
+{
+  $XML::SAX::Tap::VERSION = '0.43'; # TRIAL
+}
+# ABSTRACT: Tap a pipeline of SAX processors
+
+
+use base qw( XML::SAX::Machine );
+
+
+use strict;
+use Carp;
+
+
+sub new {
+    my $proto = shift;
+    my $options = @_ && ref $_[-1] eq "HASH" ? pop : {};
+
+    my $stage_number = 0;
+    my @machine_spec = (
+        [ "Intake", "XML::Filter::Tee"  ],
+        map( [ "Stage_" . $stage_number++, $_ ], @_ ),
+    );
+
+    push @{$machine_spec[$_]}, "Stage_" . $_
+        for 0..$#machine_spec-1 ;
+
+    ## Pushing this last means that the Exhaust will get
+    ## events after Stage_0
+    push @{$machine_spec[0]}, "Exhaust";
+
+    return $proto->SUPER::new( @machine_spec, $options );
+}
+
+
+
+1;
+
+__END__
+
+=pod
 
 =head1 NAME
 
 XML::SAX::Tap - Tap a pipeline of SAX processors
+
+=head1 VERSION
+
+version 0.43
 
 =head1 SYNOPSIS
 
@@ -49,7 +93,7 @@ in a pipeline; these comprise the "tapping" processors:
             |           +----------------------------------+--> downstream
             |                                              |
             +----------------------------------------------+
-   
+
 The events are not copied, since they may be data structures that are
 difficult or impossibly to copy properly, like parts of a C-based DOM
 implementation.
@@ -61,14 +105,9 @@ handler sees them.
 This machine has no C<Exhaust> port (see L<XML::SAX::Machine> for
 details about C<Intake> and C<Exhaust> ports).
 
-=cut
+=head1 NAME
 
-use base qw( XML::SAX::Machine );
-
-$VERSION = 0.1;
-
-use strict;
-use Carp;
+XML::SAX::Tap - Tap a pipeline of SAX processors
 
 =head1 METHODS
 
@@ -77,29 +116,6 @@ use Carp;
 =item new
 
     my $tap = XML::SAX::Tap->new( @tap_processors, \%options );
-
-=cut
-
-sub new {
-    my $proto = shift;
-    my $options = @_ && ref $_[-1] eq "HASH" ? pop : {};
-
-    my $stage_number = 0;
-    my @machine_spec = (
-        [ "Intake", "XML::Filter::Tee"  ],
-        map( [ "Stage_" . $stage_number++, $_ ], @_ ),
-    );
-
-    push @{$machine_spec[$_]}, "Stage_" . $_
-        for 0..$#machine_spec-1 ;
-
-    ## Pushing this last means that the Exhaust will get
-    ## events after Stage_0
-    push @{$machine_spec[0]}, "Exhaust";
-
-    return $proto->SUPER::new( @machine_spec, $options );
-}
-
 
 =back
 
@@ -114,6 +130,25 @@ sub new {
 You may use this module under the terms of the Artistic, GNU Public, or
 BSD licenses, as you choose.
 
-=cut
+=head1 AUTHORS
 
-1;
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

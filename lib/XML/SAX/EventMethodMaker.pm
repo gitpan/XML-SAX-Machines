@@ -1,58 +1,9 @@
 package XML::SAX::EventMethodMaker;
+{
+  $XML::SAX::EventMethodMaker::VERSION = '0.43'; # TRIAL
+}
+# ABSTRACT: SAX event names, creation of methods from templates
 
-$VERSION = 0.1;
-
-=head1 NAME
-
-XML::SAX::EventMethodMaker - SAX event names, creation of methods from templates
-
-=head1 SYNOPSIS
-
-    use XML::SAX::EventMethodMaker qw(
-        sax_event_names missing_methods compile_methods
-    );
-
-  ## Getting event names by handler type and SAX version
-    my @events          = sax_event_names;
-    my @dtd_events      = sax_event_names "DTDHandler";
-    my @sax1_events     = sax_event_names 1;
-    my @sax1_dtd_events = sax_event_names 1, "DTDHandler";
-
-  ## Figuring out what events a class or object does not provide
-    my @missing = missing_methods $class, @events ;
-
-  ## Creating all SAX event methods
-    compile_methods $class, <<'TEMPLATE_END', sax_event_names;
-    sub <EVENT> {
-        my $self = shift;
-        ... do something ...
-
-        ## Pass the event up to the base class
-        $self->SUPER::<EVENT>( @_ );
-    }
-    TEMPLATE_END
-
-  ## Creating some methods
-    compile_methods $class, <<'TEMPLATE_END', @method_names;
-    ...
-    TEMPLATE_END
-
-  ## Creating only missing event handlers
-    compile_missing_methods $class, <<'TEMPLATE_END';
-    ...
-    TEMPLATE_END
-
-=head1 DESCRIPTION
-
-In building SAX machines, it is often handle to build a set of event
-handlers from a common template.  This helper library (or class)
-provides the database of handler names, queryable by type, and
-
-=head1 Functions
-
-=over
-
-=cut
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw(
@@ -169,45 +120,6 @@ for my $event ( keys %event_table, keys %parse_methods_table ) {
 
 #use Data::Dumper; local $Data::Dumper::Indent=1; warn Dumper( \%events_db );
 
-=item sax_event_names
-
-    my @names = sax_event_names @query_terms;
-
-Takes a list of query terms and returns all matching events.
-
-Query terms may be:
-    - a SAX version number: 1 or 2 (no floating point or ranges)
-    - Handler
-    - DTDHandler
-    - ContentHandler
-    - DocumentHandler
-    - DeclHandler
-    - ErrorHandler
-    - EntityResolver
-    - LexicalHandler
-
-In addition to normal SAX events, there are also "parse" events:
-    - ParseMethods
-
-Unrecognized query terms cause exceptions.
-
-If no query terms are provided, then all event names from all versions
-are returned except for parse methods (parse, parse_uri, ...).
-
-If any version numbers are supplied, then only events from those version
-numbers are returned.  No support for noninteger version numbers is
-provided, nor for ranges.  So far, only two SAX versions exist in Perl, 1 and
-2.
-
-If any handler types are provided, then only events of those types are
-returned.  Handler types are case insensitive.
-
-In other words, all returned events must match both a version number and
-a handler type.
-
-No support for boolean logic is provided.
-
-=cut
 
 my %legal_query_terms = map {
     ( $_ => undef );
@@ -261,21 +173,6 @@ sub sax_event_names {
 }
 
 
-=item missing_methods
-
-    my @missing = missing_methods __PACKAGE__, @event_names;
-    my @missing = missing_methods $object, @event_names;
-
-This subroutine looks to see if the object or class has declared
-event handler methods for the named events.  Any events that haven't
-been declared are returned.
-
-It is sufficient to use subroutine prototypes to prevent shimming AUTOLOADed
-(or otherwise lazily compiled) methods:
-
-    sub start_document ;
-
-=cut
 
 sub missing_methods {
     my $where = shift;
@@ -285,17 +182,6 @@ sub missing_methods {
 }
 
 
-=item compile_methods
-
-    compile_methods __PACKAGE__, $template, @method_names;
-    compile_methods $object,     $template, @method_names;
-
-Compiles the given template for each given event name, substituting
-the event name for the string <EVENT> or <METHOD> in the template.
-There is no difference between these two tags, they are provided to
-only to let you make your templates more readable to you.
-
-=cut
 
 sub compile_methods {
     my ( $where, $template ) = ( shift, shift );
@@ -312,6 +198,140 @@ sub compile_methods {
 }
 
 
+
+sub compile_missing_methods {
+    my ( $where, $template ) = ( shift, shift );
+
+    compile_methods $where, $template, missing_methods $where, @_;
+}
+
+
+1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+XML::SAX::EventMethodMaker - SAX event names, creation of methods from templates
+
+=head1 VERSION
+
+version 0.43
+
+=head1 SYNOPSIS
+
+    use XML::SAX::EventMethodMaker qw(
+        sax_event_names missing_methods compile_methods
+    );
+
+  ## Getting event names by handler type and SAX version
+    my @events          = sax_event_names;
+    my @dtd_events      = sax_event_names "DTDHandler";
+    my @sax1_events     = sax_event_names 1;
+    my @sax1_dtd_events = sax_event_names 1, "DTDHandler";
+
+  ## Figuring out what events a class or object does not provide
+    my @missing = missing_methods $class, @events ;
+
+  ## Creating all SAX event methods
+    compile_methods $class, <<'TEMPLATE_END', sax_event_names;
+    sub <EVENT> {
+        my $self = shift;
+        ... do something ...
+
+        ## Pass the event up to the base class
+        $self->SUPER::<EVENT>( @_ );
+    }
+    TEMPLATE_END
+
+  ## Creating some methods
+    compile_methods $class, <<'TEMPLATE_END', @method_names;
+    ...
+    TEMPLATE_END
+
+  ## Creating only missing event handlers
+    compile_missing_methods $class, <<'TEMPLATE_END';
+    ...
+    TEMPLATE_END
+
+=head1 DESCRIPTION
+
+In building SAX machines, it is often handle to build a set of event
+handlers from a common template.  This helper library (or class)
+provides the database of handler names, queryable by type, and
+
+=head1 NAME
+
+XML::SAX::EventMethodMaker - SAX event names, creation of methods from templates
+
+=head1 Functions
+
+=over
+
+=item sax_event_names
+
+    my @names = sax_event_names @query_terms;
+
+Takes a list of query terms and returns all matching events.
+
+Query terms may be:
+    - a SAX version number: 1 or 2 (no floating point or ranges)
+    - Handler
+    - DTDHandler
+    - ContentHandler
+    - DocumentHandler
+    - DeclHandler
+    - ErrorHandler
+    - EntityResolver
+    - LexicalHandler
+
+In addition to normal SAX events, there are also "parse" events:
+    - ParseMethods
+
+Unrecognized query terms cause exceptions.
+
+If no query terms are provided, then all event names from all versions
+are returned except for parse methods (parse, parse_uri, ...).
+
+If any version numbers are supplied, then only events from those version
+numbers are returned.  No support for noninteger version numbers is
+provided, nor for ranges.  So far, only two SAX versions exist in Perl, 1 and
+2.
+
+If any handler types are provided, then only events of those types are
+returned.  Handler types are case insensitive.
+
+In other words, all returned events must match both a version number and
+a handler type.
+
+No support for boolean logic is provided.
+
+=item missing_methods
+
+    my @missing = missing_methods __PACKAGE__, @event_names;
+    my @missing = missing_methods $object, @event_names;
+
+This subroutine looks to see if the object or class has declared
+event handler methods for the named events.  Any events that haven't
+been declared are returned.
+
+It is sufficient to use subroutine prototypes to prevent shimming AUTOLOADed
+(or otherwise lazily compiled) methods:
+
+    sub start_document ;
+
+=item compile_methods
+
+    compile_methods __PACKAGE__, $template, @method_names;
+    compile_methods $object,     $template, @method_names;
+
+Compiles the given template for each given event name, substituting
+the event name for the string <EVENT> or <METHOD> in the template.
+There is no difference between these two tags, they are provided to
+only to let you make your templates more readable to you.
+
 =item compile_missing_methods
 
     compile_missing_methods __PACKAGE__, $template, @method_names;
@@ -321,14 +341,6 @@ Shorthand for calls like
 
     compile_methods __PACKAGE__, $template,
         missing_methods __PACKAGE__, @method_names;
-
-=cut
-
-sub compile_missing_methods {
-    my ( $where, $template ) = ( shift, shift );
-
-    compile_methods $where, $template, missing_methods $where, @_;
-}
 
 =back
 
@@ -345,6 +357,25 @@ modified by Robin Berjon, and pilfered and corrupted by me.
 You may use this under the terms of the Artistic, GNU Public, or BSD
 licences, as you see fit.
 
-=cut
+=head1 AUTHORS
 
-1;
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

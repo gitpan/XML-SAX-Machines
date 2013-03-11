@@ -1,8 +1,61 @@
 package XML::SAX::ByRecord;
+{
+  $XML::SAX::ByRecord::VERSION = '0.43'; # TRIAL
+}
+# ABSTRACT: Record oriented processing of (data) documents
+
+
+use base qw( XML::SAX::Machine );
+
+use strict;
+use Carp;
+
+
+sub new {
+    my $proto = shift;
+    my $class = ref $proto || $proto;
+    my @options_hash_if_present = @_ && ref $_[-1] eq "HASH" ? pop : () ;
+
+    my $stage_num = 0;
+
+    my @machine_spec = (
+        [ Intake => "XML::Filter::DocSplitter" ],
+        map( [ "Stage_" . $stage_num++ => $_   ], @_ ),
+        [ Merger => "XML::Filter::Merger" => qw( Exhaust ) ],
+    );
+
+    push @{$machine_spec[$_]}, "Stage_" . $_
+        for 0..$#machine_spec-2 ;
+
+    push @{$machine_spec[-2]}, "Merger"
+        if @machine_spec;
+
+    my $self = $proto->SUPER::new(
+        @machine_spec,
+        @options_hash_if_present
+    );
+
+    my $distributor = $self->find_part( 0 );
+    $distributor->set_aggregator( $self->find_part( -1 ) )
+        if $distributor->can( "set_aggregator" );
+
+    return $self;
+}
+
+
+1;
+
+__END__
+
+=pod
 
 =head1 NAME
 
 XML::SAX::ByRecord - Record oriented processing of (data) documents
+
+=head1 VERSION
+
+version 0.43
 
 =head1 SYNOPSIS
 
@@ -87,7 +140,6 @@ through the filter pipeline.
 
 Here's a quick little filter to uppercase text content:
 
-    
     package My::Filter::Uc;
 
     use vars qw( @ISA );
@@ -118,7 +170,7 @@ When fed a document like:
     </root>
 
 the output looks like:
-        
+
     <root> a
         <rec>B</rec> c
         <rec>C</rec> e
@@ -145,14 +197,9 @@ and the My::Filter::Uc got three sets of events like:
     end_element:   </rec>
     end_document
 
-=cut
+=head1 NAME
 
-use base qw( XML::SAX::Machine );
-
-$VERSION = 0.1;
-
-use strict;
-use Carp;
+XML::SAX::ByRecord - Record oriented processing of (data) documents
 
 =head1 METHODS
 
@@ -163,39 +210,6 @@ use Carp;
     my $d = XML::SAX::ByRecord->new( @channels, \%options );
 
 Longhand for calling the ByRecord function exported by XML::SAX::Machines.
-
-=cut
-
-sub new {
-    my $proto = shift;
-    my $class = ref $proto || $proto;
-    my @options_hash_if_present = @_ && ref $_[-1] eq "HASH" ? pop : () ;
-
-    my $stage_num = 0;
-
-    my @machine_spec = (
-        [ Intake => "XML::Filter::DocSplitter" ],
-        map( [ "Stage_" . $stage_num++ => $_   ], @_ ),
-        [ Merger => "XML::Filter::Merger" => qw( Exhaust ) ],
-    );
-
-    push @{$machine_spec[$_]}, "Stage_" . $_
-        for 0..$#machine_spec-2 ;
-
-    push @{$machine_spec[-2]}, "Merger"
-        if @machine_spec;
-
-    my $self = $proto->SUPER::new(
-        @machine_spec,
-        @options_hash_if_present
-    );
-
-    my $distributor = $self->find_part( 0 );
-    $distributor->set_aggregator( $self->find_part( -1 ) )
-        if $distributor->can( "set_aggregator" );
-
-    return $self;
-}
 
 =back
 
@@ -209,6 +223,25 @@ To be written.  Pretty much just that C<start_manifold_processing> and
 C<end_manifold_processing> need to be provided.  See L<XML::Filter::Merger>
 and it's source code for a starter.
 
-=cut
+=head1 AUTHORS
 
-1;
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

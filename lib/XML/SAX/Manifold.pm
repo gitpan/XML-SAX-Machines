@@ -1,8 +1,51 @@
 package XML::SAX::Manifold;
+{
+  $XML::SAX::Manifold::VERSION = '0.43'; # TRIAL
+}
+# ABSTRACT: Multipass processing of documents
+
+
+use base qw( XML::SAX::Machine );
+
+use strict;
+use Carp;
+
+
+sub new {
+    my $proto = shift;
+    my $class = ref $proto || $proto;
+    my @options_hash_if_present = @_ && ref $_[-1] eq "HASH" ? pop : () ;
+
+    my $channel_num = 0;
+
+    my $self = $proto->SUPER::new(
+        [ Intake => "XML::Filter::Distributor", (1..$#_+1) ],
+        map( [ "Channel_" . $channel_num++ => $_ => qw( Merger ) ], @_ ),
+        [ Merger => "XML::Filter::Merger" => qw( Exhaust ) ],
+        @options_hash_if_present
+    );
+
+    my $distributor = $self->find_part( 0 );
+    $distributor->set_aggregator( $self->find_part( -1 ) )
+        if $distributor->can( "set_aggregator" );
+
+    return $self;
+}
+
+
+1;
+
+__END__
+
+=pod
 
 =head1 NAME
 
 XML::SAX::Manifold - Multipass processing of documents
+
+=head1 VERSION
+
+version 0.43
 
 =head1 SYNOPSIS
 
@@ -71,14 +114,9 @@ events are then played back through Channel_1 and then through Channel_2
 It's the merger's job to assemble the three documents it receives in to
 one document; see L<XML::Filter::Merger> for details.
 
-=cut
+=head1 NAME
 
-use base qw( XML::SAX::Machine );
-
-$VERSION = 0.1;
-
-use strict;
-use Carp;
+XML::SAX::Manifold - Multipass processing of documents
 
 =head1 METHODS
 
@@ -90,29 +128,6 @@ use Carp;
 
 Longhand for calling the Manifold function exported by XML::SAX::Machines.
 
-=cut
-
-sub new {
-    my $proto = shift;
-    my $class = ref $proto || $proto;
-    my @options_hash_if_present = @_ && ref $_[-1] eq "HASH" ? pop : () ;
-
-    my $channel_num = 0;
-
-    my $self = $proto->SUPER::new(
-        [ Intake => "XML::Filter::Distributor", (1..$#_+1) ],
-        map( [ "Channel_" . $channel_num++ => $_ => qw( Merger ) ], @_ ),
-        [ Merger => "XML::Filter::Merger" => qw( Exhaust ) ],
-        @options_hash_if_present
-    );
-
-    my $distributor = $self->find_part( 0 );
-    $distributor->set_aggregator( $self->find_part( -1 ) )
-        if $distributor->can( "set_aggregator" );
-
-    return $self;
-}
-
 =back
 
 =head1 Writing an aggregator.
@@ -121,6 +136,25 @@ To be written.  Pretty much just that C<start_manifold_processing> and
 C<end_manifold_processing> need to be provided.  See L<XML::Filter::Merger>
 and it's source code for a starter.
 
-=cut
+=head1 AUTHORS
 
-1;
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

@@ -1,147 +1,10 @@
 package XML::SAX::Machine;
+{
+  $XML::SAX::Machine::VERSION = '0.43'; # TRIAL
+}
+# ABSTRACT: Manage a collection of SAX processors
 
-=head1 NAME
 
-    XML::SAX::Machine - Manage a collection of SAX processors
-
-=head1 SYNOPSIS
-
-    ## Note: See XML::SAX::Pipeline and XML::SAX::Machines first,
-    ## this is the gory, detailed interface.
-
-    use My::SAX::Machines qw( Machine );
-    use My::SAX::Filter2;
-    use My::SAX::Filter3;
-
-    my $filter3 = My::SAX::Filter3->new;
-
-    ## A simple pipeline.  My::SAX::Filter1 will be autoloaded.
-    my $m = Machine(
-        #
-        # Name   => Class/object            => handler(s)
-        #
-        [ Intake => "My::SAX::Filter1"      => "B"        ],
-        [ B      => My::SAX::Filter2->new() => "C"        ],
-        [ C      => $filter3                => "D"        ],
-        [ D      => \*STDOUT                              ],
-    );
-
-    ## A parser will be created unless My::SAX::Filter1 can parse_file
-    $m->parse_file( "foo.revml" );
-
-    my $m = Machine(
-        [ Intake   => "My::SAX::Filter1"  => qw( Tee     ) ],
-        [ Tee      => "XML::Filter::SAXT" => qw( Foo Bar ) ],
-        [ Foo      => "My::SAX::Filter2"  => qw( Out1    ) ],
-        [ Out1     => \$log                                ],
-        [ Bar      => "My::SAX::Filter3"  => qw( Exhaust ) ],
-    );
-
-=head1 DESCRIPTION
-
-B<WARNING>: This API is alpha!!!  It I<will> be changing.
-
-A generic SAX machine (an instance of XML::SAX::Machine) is a container
-of SAX processors (referred to as "parts") connected in arbitrary ways.
-
-Each parameter to C<Machine()> (or C<XML::SAX::Machine->new()>)
-represents one top level part of the machine.  Each part has a name, a
-processor, and one or more handlers (usually specified by name, as shown
-in the SYNOPSIS).
-
-Since SAX machines may be passed in as single top level parts, you can
-also create nested, complex machines ($filter3 in the SYNOPSIS could be
-a Pipeline, for example).
-
-A SAX machines can act as a normal SAX processors by connecting them to
-other SAX processors:
-
-    my $w = My::Writer->new();
-    my $m = Machine( ...., { Handler => $w } );
-    my $g = My::Parser->new( Handler => $w );
-
-=head2 Part Names
-
-Although it's not required, each part in a machine can be named.  This
-is useful for retrieving and manipulating the parts (see L</part>, for
-instance), and for debugging, since debugging output (see
-L</trace_parts> and L</trace_all_parts>) includes the names.
-
-Part names must be valid Perl subroutine names, beginning with an
-uppercase character.  This is to allow convenience part accessors
-methods like
-
-    $c = $m->NameOfAFilter;
-
-to work without ever colliding with the name of a method (all method
-names are completely lower case).  Only filters named like this can be
-accessed using the magical accessor functions.
-
-=head2 Reserved Names: Intake and Exhaust
-
-The names c<Intake> and C<Exhaust> are reserved.  C<Intake> refers to
-the first part in the processing chain.  This is not necessarily the
-first part in the constructor list, just the first part to receive
-external events.
-
-C<Exhaust> refers to the output of the machine; no part may be named
-C<Exhaust>, and any parts with a handler named C<Exhaust> will deliver
-their output to the machine's handler.  Normally, only one part should
-deliver it's output to the Exhaust port.
-
-Calling $m->set_handler() alters the Exhaust port, assuming any
-processors pointing to the C<Exhaust> provide a C<set_handler()> method
-like L<XML::SAX::Base>'s.
-
-C<Intake> and C<Exhaust> are usually assigned automatically by
-single-purpose machines like L<XML::SAX::Pipeline> and
-L<XML::SAX::Manifold>.
-
-=head2 SAX Processor Support
-
-The XML::SAX::Machine class is very agnostic about what SAX processors
-it supports; about the only constraint is that it must be a blessed
-reference (of any type) that does not happen to be a Perl IO::Handle
-(which are assumed to be input or output filehandles).
-
-The major constraint placed on SAX processors is that they must provide
-either a C<set_handler> or C<set_handlers> method (depending on how many
-handlers a processor can feed) to allow the SAX::Machine to disconnect
-and reconnect them.  Luckily, this is true of almost any processor
-derived from XML::SAX::Base.  Unfortunately, many SAX older (SAX1)
-processors do not meet this requirement; they assume that SAX processors
-will only ever be connected together using their constructors.
-
-=head2 Connections
-
-SAX machines allow you to connect the parts however you like; each part
-is given a name and a list of named handlers to feed.  The number of
-handlers a part is allowed depends on the part; most filters only allow
-once downstream handler, but filters like L<XML::Filter::SAXT> and
-L<XML::Filter::Distributor> are meant to feed multiple handlers.
-
-Parts may not be connected in loops ("cycles" in graph theory terms).
-The machines specified by:
-
-    [ A => "Foo" => "A" ],  ## Illegal!
-
-and 
-
-    [ A => "Foo" => "B" ],  ## Illegal!
-    [ B => "Foo" => "A" ],
-
-.  Configuring a machine this way would cause events to flow in an
-infinite loop, and/or cause the first processor in the cycle to start
-receiving events from the end of the cycle before the input document was
-complete.  Besides, it's not a very useful topology :).
-
-SAX machines detect loops at construction time.
-
-=head1 API
-
-=cut
-
-$VERSION=1.0;
 
 use strict;
 
@@ -161,22 +24,7 @@ XML::SAX::Machines->expected_processor_class_options(qw(
     ConstructWithHashedOptions
 ));
 
-=head2 Public Methods
 
-These methods are meant to be used by users of SAX machines.
-
-=over
-
-=cut
-
-=item new()
-
-    my $m = $self->new( @machine_spec, \%options );
-
-Creates $self using %options, and compiles the machine spec.  This is
-the longhand form of C<Machines( ... )>.
-
-=cut
 
 sub new {
     my $proto = shift;
@@ -196,45 +44,6 @@ sub new {
     return $self;
 }
 
-=item find_part
-
-Gets a part contained by this machine by name, number or object reference:
-
-    $c = $m->find_part( $name );
-    $c = $m->find_part( $number );
-    $c = $m->find_part( $obj );    ## useful only to see if $obj is in $m
-
-If a machine contains other machines, parts of the contained machines
-may be accessed by name using unix directory syntax:
-
-    $c = $m->find_part( "/Intake/Foo/Bar" );
-
-(all paths must be absolute).
-
-Parts may also be accessed by number using array indexing:
-
-    $c = $m->find_part(0);  ## Returns first part or undef if none
-    $c = $m->find_part(-1); ## Returns last part or undef if none
-    $c = $m->find_part( "Foo/0/1/-1" );
-
-There is no way to guarantee that a part's position number means
-anything, since parts can be reconnected after their position numbers
-are assigned, so using a part name is recommended.
-
-Throws an exception if the part is not found, so doing things like
-
-   $m->find_part( "Foo" )->bar()
-
-garner informative messages when "Foo" is not found.  If you want to
-test a result code, do something like
-
-    my $p = eval { $m->find_part };
-    unless ( $p ) {
-        ...handle lookup failure...
-    }
-
-
-=cut
 
 sub _find_part_rec {
     my $self = shift; 
@@ -348,17 +157,6 @@ sub AUTOLOAD {
     return $found;
 }
 
-=item parts
-
-    for ( $m->parts ) { ... }
-
-Gets an arbitrarily ordered list of top level parts in this machine.
-This is all of the parts directly contained by this machine and none of
-the parts that may be inside them.  So if a machine contains an
-L<XML::SAX::Pipeline> as one of it's parts, the pipeline will be
-returned but not the parts inside the pipeline.
-
-=cut
 
 sub parts {
     my $self = shift; 
@@ -367,14 +165,6 @@ sub parts {
     return map $_->{Processor}, @{$self->{Parts}};
 }
 
-=item all_parts
-
-    for ( $m->all_parts ) { ... }
-
-Gets all parts in this machine, not just top level ones. This includes
-any machines contained by this machine and their parts.
-
-=cut
 
 ## TODO: Detect deep recursion in _all_part_recs().  In fact, detect deep
 ## recursion when building the machine.
@@ -501,29 +291,6 @@ sub all_parts {
 #    return @found;
 #}
 
-=item set_handler
-
-    $m->set_handler( $handler );
-    $m->set_handler( DTDHandler => $handler );
-
-Sets the machine's handler and sets the handlers for all parts that
-have C<Exhaust> specified as their handlers.  Requires that any such
-parts provide a C<set_handler> or (if the part has multiple handlers)
-a C<set_handlers> method.
-
-NOTE: handler types other than "Handler" are only supported if they are
-supported by whatever parts point at the C<Exhaust>.  If the handler type is
-C<Handler>, then the appropriate method is called as:
-
-    $part->set_handler( $handler );
-    $part->set_handlers( $handler0, $handler1, ... );
-
-If the type is some other handler type, these are called as:
-
-    $part->set_handler( $type => $handler );
-    $part->set_handlers( { $type0 => $handler0 }, ... );
-
-=cut
 
 sub set_handler {
     my $self = shift;
@@ -579,16 +346,6 @@ sub set_handler {
     $self->{$type} = $handler;
 }
 
-=item trace_parts
-
-    $m->trace_parts;          ## trace all top-level parts
-    $m->trace_parts( @ids );  ## trace the indicated parts
-
-Uses Devel::TraceSAX to enable tracing of all events received by the parts of
-this machine.  Does not enable tracing of parts contained in machines in this
-machine; for that, see trace_all_parts.
-
-=cut
 
 my $warned_about_missing_sax_tracer;
 sub trace_parts {
@@ -612,14 +369,6 @@ sub trace_parts {
 }
 
 
-=item trace_all_parts
-
-    $m->trace_all_parts;      ## trace all parts
-
-Uses Devel::TraceSAX to trace all events received by the parts of this
-machine.
-
-=cut
 
 sub trace_all_parts {
     my $self = shift;
@@ -645,14 +394,6 @@ sub trace_all_parts {
 }
 
 
-=item untracify_parts
-
-    $m->untracify_parts( @ids );
-
-Converts the indicated parts to SAX processors with tracing enabled.
-This may not work with processors that use AUTOLOAD.
-
-=cut
 
 sub untracify_parts {
     my $self = shift;
@@ -662,24 +403,6 @@ sub untracify_parts {
 }
 
 
-=back
-
-=head1 Events and parse routines
-
-XML::SAX::Machine provides all SAX1 and SAX2 events and delgates them to the
-processor indicated by $m->find_part( "Intake" ).  This adds some overhead, so
-if you are concerned about overhead, you might want to direct SAX events
-directly to the Intake instead of to the machine.
-
-It also provides parse...() routines so it can whip up a parser if need
-be.  This means: parse(), parse_uri(), parse_string(), and parse_file()
-(see XML::SAX::EventMethodMaker for details).  There is no way to pass
-methods directly to the parser unless you know that the Intake is a
-parser and call it directly.  This is not so important for parsing,
-because the overhead it takes to delegate is minor compared to the
-effort needed to parse an XML document.
-
-=cut
 
 compile_methods __PACKAGE__, <<'EOCODE', sax_event_names "ParseMethods" ;
     sub <METHOD> {
@@ -737,27 +460,7 @@ compile_methods __PACKAGE__, <<'EOCODE', sax_event_names ;
     }
 EOCODE
 
-=head2 Internal and Helper Methods
 
-These methods are meant to be used/overridden by subclasses.
-
-=over
-
-=cut
-
-=item _compile_specs
-
-    my @comp = $self->_compile_specs( @_ );
-
-Runs through a list of module names, output specifiers, etc., and builds
-the machine.
-
-    $scalar     --> "$scalar"->new
-    $ARRAY_ref  --> pipeline @$ARRAY_ref
-    $SCALAR_ref --> XML::SAX::Writer->new( Output => $SCALAR_ref )
-    $GLOB_ref   --> XML::SAX::Writer->new( Output => $GLOB_ref )
-
-=cut
 
 my %basic_types = (
     ARRAY  => undef,
@@ -1214,18 +917,6 @@ sub _compile_specs {
     croak join "\n", @errors if @errors;
 }
 
-=item generate_description
-
-    $m->generate_description( $h );
-    $m->generate_description( Handler => $h );
-    $m->generate_description( Pipeline ... );
-
-Generates a series of SAX events to the handler of your choice.
-
-See L<XML::Handler::Machine2GraphViz> on CPAN for a way of visualizing
-machine innards.
-
-=cut
 
 sub _SAX2_attrs {
     my %a = @_;
@@ -1417,44 +1108,14 @@ sub generate_description {
     $h->end_document({}) unless $options->{Depth};
 }
 
-=back
-
-=head1 TODO
-
-=over
-
-=item *
-
-Separate initialization from construction time; there should be somthing
-like a $m->connect( ....machine_spec... ) that new() calls to allow you
-to delay parts speficication and reconfigure existing machines.
-
-=item *
-
-Allow an XML doc to be passed in as a machine spec.
-
-=back
-
-=head1 LIMITATIONS
-
-=over
-
-=back
-
-=head1 AUTHOR
-
-    Barrie Slaymaker <barries@slaysys.com>
-
-=head1 LICENSE
-
-Artistic or GPL, any version.
-
-=cut
 
 ##
 ## This is a private class, only this class should use it directly.
 ##
 package XML::SAX::Machine::Part;
+{
+  $XML::SAX::Machine::Part::VERSION = '0.43'; # TRIAL
+}
 
 use fields (
     'Name',       ## The caller-given name of the part
@@ -1494,3 +1155,367 @@ sub string_description {
 }
 
 1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+XML::SAX::Machine - Manage a collection of SAX processors
+
+=head1 VERSION
+
+version 0.43
+
+=head1 SYNOPSIS
+
+    ## Note: See XML::SAX::Pipeline and XML::SAX::Machines first,
+    ## this is the gory, detailed interface.
+
+    use My::SAX::Machines qw( Machine );
+    use My::SAX::Filter2;
+    use My::SAX::Filter3;
+
+    my $filter3 = My::SAX::Filter3->new;
+
+    ## A simple pipeline.  My::SAX::Filter1 will be autoloaded.
+    my $m = Machine(
+        #
+        # Name   => Class/object            => handler(s)
+        #
+        [ Intake => "My::SAX::Filter1"      => "B"        ],
+        [ B      => My::SAX::Filter2->new() => "C"        ],
+        [ C      => $filter3                => "D"        ],
+        [ D      => \*STDOUT                              ],
+    );
+
+    ## A parser will be created unless My::SAX::Filter1 can parse_file
+    $m->parse_file( "foo.revml" );
+
+    my $m = Machine(
+        [ Intake   => "My::SAX::Filter1"  => qw( Tee     ) ],
+        [ Tee      => "XML::Filter::SAXT" => qw( Foo Bar ) ],
+        [ Foo      => "My::SAX::Filter2"  => qw( Out1    ) ],
+        [ Out1     => \$log                                ],
+        [ Bar      => "My::SAX::Filter3"  => qw( Exhaust ) ],
+    );
+
+=head1 DESCRIPTION
+
+B<WARNING>: This API is alpha!!!  It I<will> be changing.
+
+A generic SAX machine (an instance of XML::SAX::Machine) is a container
+of SAX processors (referred to as "parts") connected in arbitrary ways.
+
+Each parameter to C<Machine()> (or C<XML::SAX::Machine->new()>)
+represents one top level part of the machine.  Each part has a name, a
+processor, and one or more handlers (usually specified by name, as shown
+in the SYNOPSIS).
+
+Since SAX machines may be passed in as single top level parts, you can
+also create nested, complex machines ($filter3 in the SYNOPSIS could be
+a Pipeline, for example).
+
+A SAX machines can act as a normal SAX processors by connecting them to
+other SAX processors:
+
+    my $w = My::Writer->new();
+    my $m = Machine( ...., { Handler => $w } );
+    my $g = My::Parser->new( Handler => $w );
+
+=head2 Part Names
+
+Although it's not required, each part in a machine can be named.  This
+is useful for retrieving and manipulating the parts (see L</part>, for
+instance), and for debugging, since debugging output (see
+L</trace_parts> and L</trace_all_parts>) includes the names.
+
+Part names must be valid Perl subroutine names, beginning with an
+uppercase character.  This is to allow convenience part accessors
+methods like
+
+    $c = $m->NameOfAFilter;
+
+to work without ever colliding with the name of a method (all method
+names are completely lower case).  Only filters named like this can be
+accessed using the magical accessor functions.
+
+=head2 Reserved Names: Intake and Exhaust
+
+The names c<Intake> and C<Exhaust> are reserved.  C<Intake> refers to
+the first part in the processing chain.  This is not necessarily the
+first part in the constructor list, just the first part to receive
+external events.
+
+C<Exhaust> refers to the output of the machine; no part may be named
+C<Exhaust>, and any parts with a handler named C<Exhaust> will deliver
+their output to the machine's handler.  Normally, only one part should
+deliver it's output to the Exhaust port.
+
+Calling $m->set_handler() alters the Exhaust port, assuming any
+processors pointing to the C<Exhaust> provide a C<set_handler()> method
+like L<XML::SAX::Base>'s.
+
+C<Intake> and C<Exhaust> are usually assigned automatically by
+single-purpose machines like L<XML::SAX::Pipeline> and
+L<XML::SAX::Manifold>.
+
+=head2 SAX Processor Support
+
+The XML::SAX::Machine class is very agnostic about what SAX processors
+it supports; about the only constraint is that it must be a blessed
+reference (of any type) that does not happen to be a Perl IO::Handle
+(which are assumed to be input or output filehandles).
+
+The major constraint placed on SAX processors is that they must provide
+either a C<set_handler> or C<set_handlers> method (depending on how many
+handlers a processor can feed) to allow the SAX::Machine to disconnect
+and reconnect them.  Luckily, this is true of almost any processor
+derived from XML::SAX::Base.  Unfortunately, many SAX older (SAX1)
+processors do not meet this requirement; they assume that SAX processors
+will only ever be connected together using their constructors.
+
+=head2 Connections
+
+SAX machines allow you to connect the parts however you like; each part
+is given a name and a list of named handlers to feed.  The number of
+handlers a part is allowed depends on the part; most filters only allow
+once downstream handler, but filters like L<XML::Filter::SAXT> and
+L<XML::Filter::Distributor> are meant to feed multiple handlers.
+
+Parts may not be connected in loops ("cycles" in graph theory terms).
+The machines specified by:
+
+    [ A => "Foo" => "A" ],  ## Illegal!
+
+and 
+
+    [ A => "Foo" => "B" ],  ## Illegal!
+    [ B => "Foo" => "A" ],
+
+.  Configuring a machine this way would cause events to flow in an
+infinite loop, and/or cause the first processor in the cycle to start
+receiving events from the end of the cycle before the input document was
+complete.  Besides, it's not a very useful topology :).
+
+SAX machines detect loops at construction time.
+
+=head1 NAME
+
+    XML::SAX::Machine - Manage a collection of SAX processors
+
+=head1 API
+
+=head2 Public Methods
+
+These methods are meant to be used by users of SAX machines.
+
+=over
+
+=item new()
+
+    my $m = $self->new( @machine_spec, \%options );
+
+Creates $self using %options, and compiles the machine spec.  This is
+the longhand form of C<Machines( ... )>.
+
+=item find_part
+
+Gets a part contained by this machine by name, number or object reference:
+
+    $c = $m->find_part( $name );
+    $c = $m->find_part( $number );
+    $c = $m->find_part( $obj );    ## useful only to see if $obj is in $m
+
+If a machine contains other machines, parts of the contained machines
+may be accessed by name using unix directory syntax:
+
+    $c = $m->find_part( "/Intake/Foo/Bar" );
+
+(all paths must be absolute).
+
+Parts may also be accessed by number using array indexing:
+
+    $c = $m->find_part(0);  ## Returns first part or undef if none
+    $c = $m->find_part(-1); ## Returns last part or undef if none
+    $c = $m->find_part( "Foo/0/1/-1" );
+
+There is no way to guarantee that a part's position number means
+anything, since parts can be reconnected after their position numbers
+are assigned, so using a part name is recommended.
+
+Throws an exception if the part is not found, so doing things like
+
+   $m->find_part( "Foo" )->bar()
+
+garner informative messages when "Foo" is not found.  If you want to
+test a result code, do something like
+
+    my $p = eval { $m->find_part };
+    unless ( $p ) {
+        ...handle lookup failure...
+    }
+
+=item parts
+
+    for ( $m->parts ) { ... }
+
+Gets an arbitrarily ordered list of top level parts in this machine.
+This is all of the parts directly contained by this machine and none of
+the parts that may be inside them.  So if a machine contains an
+L<XML::SAX::Pipeline> as one of it's parts, the pipeline will be
+returned but not the parts inside the pipeline.
+
+=item all_parts
+
+    for ( $m->all_parts ) { ... }
+
+Gets all parts in this machine, not just top level ones. This includes
+any machines contained by this machine and their parts.
+
+=item set_handler
+
+    $m->set_handler( $handler );
+    $m->set_handler( DTDHandler => $handler );
+
+Sets the machine's handler and sets the handlers for all parts that
+have C<Exhaust> specified as their handlers.  Requires that any such
+parts provide a C<set_handler> or (if the part has multiple handlers)
+a C<set_handlers> method.
+
+NOTE: handler types other than "Handler" are only supported if they are
+supported by whatever parts point at the C<Exhaust>.  If the handler type is
+C<Handler>, then the appropriate method is called as:
+
+    $part->set_handler( $handler );
+    $part->set_handlers( $handler0, $handler1, ... );
+
+If the type is some other handler type, these are called as:
+
+    $part->set_handler( $type => $handler );
+    $part->set_handlers( { $type0 => $handler0 }, ... );
+
+=item trace_parts
+
+    $m->trace_parts;          ## trace all top-level parts
+    $m->trace_parts( @ids );  ## trace the indicated parts
+
+Uses Devel::TraceSAX to enable tracing of all events received by the parts of
+this machine.  Does not enable tracing of parts contained in machines in this
+machine; for that, see trace_all_parts.
+
+=item trace_all_parts
+
+    $m->trace_all_parts;      ## trace all parts
+
+Uses Devel::TraceSAX to trace all events received by the parts of this
+machine.
+
+=item untracify_parts
+
+    $m->untracify_parts( @ids );
+
+Converts the indicated parts to SAX processors with tracing enabled.
+This may not work with processors that use AUTOLOAD.
+
+=back
+
+=head1 Events and parse routines
+
+XML::SAX::Machine provides all SAX1 and SAX2 events and delgates them to the
+processor indicated by $m->find_part( "Intake" ).  This adds some overhead, so
+if you are concerned about overhead, you might want to direct SAX events
+directly to the Intake instead of to the machine.
+
+It also provides parse...() routines so it can whip up a parser if need
+be.  This means: parse(), parse_uri(), parse_string(), and parse_file()
+(see XML::SAX::EventMethodMaker for details).  There is no way to pass
+methods directly to the parser unless you know that the Intake is a
+parser and call it directly.  This is not so important for parsing,
+because the overhead it takes to delegate is minor compared to the
+effort needed to parse an XML document.
+
+=head2 Internal and Helper Methods
+
+These methods are meant to be used/overridden by subclasses.
+
+=over
+
+=item _compile_specs
+
+    my @comp = $self->_compile_specs( @_ );
+
+Runs through a list of module names, output specifiers, etc., and builds
+the machine.
+
+    $scalar     --> "$scalar"->new
+    $ARRAY_ref  --> pipeline @$ARRAY_ref
+    $SCALAR_ref --> XML::SAX::Writer->new( Output => $SCALAR_ref )
+    $GLOB_ref   --> XML::SAX::Writer->new( Output => $GLOB_ref )
+
+=item generate_description
+
+    $m->generate_description( $h );
+    $m->generate_description( Handler => $h );
+    $m->generate_description( Pipeline ... );
+
+Generates a series of SAX events to the handler of your choice.
+
+See L<XML::Handler::Machine2GraphViz> on CPAN for a way of visualizing
+machine innards.
+
+=back
+
+=head1 TODO
+
+=over
+
+=item *
+
+Separate initialization from construction time; there should be somthing
+like a $m->connect( ....machine_spec... ) that new() calls to allow you
+to delay parts speficication and reconfigure existing machines.
+
+=item *
+
+Allow an XML doc to be passed in as a machine spec.
+
+=back
+
+=head1 LIMITATIONS
+
+=over
+
+=back
+
+=head1 AUTHOR
+
+    Barrie Slaymaker <barries@slaysys.com>
+
+=head1 LICENSE
+
+Artistic or GPL, any version.
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

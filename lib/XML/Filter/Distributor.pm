@@ -1,89 +1,14 @@
 package XML::Filter::Distributor;
+{
+  $XML::Filter::Distributor::VERSION = '0.43'; # TRIAL
+}
+# ABSTRACT: Multipass processing of documents
 
-=head1 NAME
-
-XML::Filter::Distributor - Multipass processing of documents
-
-=head1 SYNOPSIS
-
-    ## See XML::SAX::Manifold for an easier way to use this filter.
-
-    use XML::SAX::Machines qw( Machine ) ;
-
-    ## See the wondrous ASCII ART below for help visualizing this
-    ## XML::SAX::Manifold makes this a lot easier.
-    my $m = Machine(
-        [ Intake => "XML::Filter::Distributor" => qw( V TOC Body ) ],
-            [ V      => "My::Validator" ],
-            [ TOC    => "My::TOCExtractor" => qw( Merger ) ],
-            [ Body   => "My::BodyMasseuse" => qw( Merger ) ],
-        [ Merger => "XML::Filter::Merger" => qw( Output ) ],
-        [ Output => \*STDOUT ],
-    );
-
-    ## Let the distributor coordinate with the merger.
-    ## XML::SAX::Manifold does this for you.
-    $m->Intake->set_aggregator( $m->Merger );
-
-    $m->parse_file( "foo" );
-
-=head1 DESCRIPTION
-
-XML::Filter::Distributor is a SAX filter that allows "multipass" processing
-of a document by sending the document through several channels of SAX
-processors one channel at a time.  A channel may be a single SAX
-processor or a machine like a pipeline (see L<XML::SAX::Pipeline>).
-
-This can be used to send the source document through one entire
-processing chain before beginning the next one, for instance if the
-first channel is a validator or linter that throws exceptions on error.
-
-It can also be used to run the document through multiple processing
-chains and glue all of the chains' output documents back together with
-something like XML::Filter::Merger.  The SYNOPSIS does both.
-
-This differs from L<XML::Filter::SAXT> in that the channels are
-prioritized and each channel receives all events for a document before
-the next channel receives any events.  XML::Filter::Distributor buffers all
-events while feeding them to the highest priority channel
-(C<$processor1> in the synopsis), and replays them for each lower
-priority channel one at a time.
-
-The event flow for the example in the SYNOPSIS would look like, with the
-numbers next to the connection arrow indicating when the document's
-events flow along that arrow.
-
-                            +-------------+
-                         +->| Validator   |
-                       1/   +-------------+
-                       /
-          1   +-------+ 2   +--------------+ 2    +--------+      
- upstream ----| Dist. |---->| TOCExtractor |--*-->| Merger |-> STDOUT
-              +-------+     +--------------+ /    +--------+   
-                       \3                   /3
-                        \   +--------------+
-                         +->| BodyMasseuse |
-                            +--------------+                         |
-
-Here's the timing of the event flows:
-
-   1: upstream -> Dist ->  Validator
-   2:             Dist -> TOCExtractorc -> Merger -> STDOUT
-   3:             Dist -> BodyMassseuse -> Merger -> STDOUT
-
-When the document arrives from upstream, the events all arrive during time
-period 1 and are buffered and also passed through processor 1.  After all
-events have been received (as indicated by an C<end_document> event from
-upstream), all events are then played back through processor 2, and then
-through processor 3.
-
-=cut
 
 use XML::SAX::Base;
 
 @ISA = qw( XML::SAX::Base );
 
-$VERSION = 0.1;
 
 @EXPORT_OK = qw( Distributor );
 
@@ -91,21 +16,6 @@ use strict;
 use Carp;
 use XML::SAX::EventMethodMaker qw( sax_event_names missing_methods compile_methods );
 
-=head1 METHODS
-
-=over
-
-=item new
-
-    my $d = XML::Filter::Distributor->new(
-        { Handler => $h1 },
-        { Handler => $h2 },
-        ...
-    );
-
-A channel may be any SAX machine, frequently they are pipelines.
-
-=cut
 
 sub new {
     my $proto = shift;
@@ -121,26 +31,12 @@ sub new {
     return $self;
 }
 
-=item set_handlers
-
-    $p->set_handlers( $handler1, $handler2 );
-
-Provided for compatability with other SAX processors, use set_handlers
-instead.
-
-=cut
 
 sub set_handlers {
     my $self = shift;
     @{$self->{Channels}} = map { { Handler => $_ } } @_;
 }
 
-=item set_handler
-
-Provided for compatability with other SAX processors, use set_handlers
-instead.
-
-=cut
 
 sub set_handler {
     shift()->set_handlers( @_ );
@@ -251,6 +147,126 @@ sub <EVENT> {
 TPL_END
 
 
+
+
+
+1;
+
+__END__
+
+=pod
+
+=head1 NAME
+
+XML::Filter::Distributor - Multipass processing of documents
+
+=head1 VERSION
+
+version 0.43
+
+=head1 SYNOPSIS
+
+    ## See XML::SAX::Manifold for an easier way to use this filter.
+
+    use XML::SAX::Machines qw( Machine ) ;
+
+    ## See the wondrous ASCII ART below for help visualizing this
+    ## XML::SAX::Manifold makes this a lot easier.
+    my $m = Machine(
+        [ Intake => "XML::Filter::Distributor" => qw( V TOC Body ) ],
+            [ V      => "My::Validator" ],
+            [ TOC    => "My::TOCExtractor" => qw( Merger ) ],
+            [ Body   => "My::BodyMasseuse" => qw( Merger ) ],
+        [ Merger => "XML::Filter::Merger" => qw( Output ) ],
+        [ Output => \*STDOUT ],
+    );
+
+    ## Let the distributor coordinate with the merger.
+    ## XML::SAX::Manifold does this for you.
+    $m->Intake->set_aggregator( $m->Merger );
+
+    $m->parse_file( "foo" );
+
+=head1 DESCRIPTION
+
+XML::Filter::Distributor is a SAX filter that allows "multipass" processing
+of a document by sending the document through several channels of SAX
+processors one channel at a time.  A channel may be a single SAX
+processor or a machine like a pipeline (see L<XML::SAX::Pipeline>).
+
+This can be used to send the source document through one entire
+processing chain before beginning the next one, for instance if the
+first channel is a validator or linter that throws exceptions on error.
+
+It can also be used to run the document through multiple processing
+chains and glue all of the chains' output documents back together with
+something like XML::Filter::Merger.  The SYNOPSIS does both.
+
+This differs from L<XML::Filter::SAXT> in that the channels are
+prioritized and each channel receives all events for a document before
+the next channel receives any events.  XML::Filter::Distributor buffers all
+events while feeding them to the highest priority channel
+(C<$processor1> in the synopsis), and replays them for each lower
+priority channel one at a time.
+
+The event flow for the example in the SYNOPSIS would look like, with the
+numbers next to the connection arrow indicating when the document's
+events flow along that arrow.
+
+                            +-------------+
+                         +->| Validator   |
+                       1/   +-------------+
+                       /
+          1   +-------+ 2   +--------------+ 2    +--------+      
+ upstream ----| Dist. |---->| TOCExtractor |--*-->| Merger |-> STDOUT
+              +-------+     +--------------+ /    +--------+   
+                       \3                   /3
+                        \   +--------------+
+                         +->| BodyMasseuse |
+                            +--------------+                         |
+
+Here's the timing of the event flows:
+
+   1: upstream -> Dist ->  Validator
+   2:             Dist -> TOCExtractorc -> Merger -> STDOUT
+   3:             Dist -> BodyMassseuse -> Merger -> STDOUT
+
+When the document arrives from upstream, the events all arrive during time
+period 1 and are buffered and also passed through processor 1.  After all
+events have been received (as indicated by an C<end_document> event from
+upstream), all events are then played back through processor 2, and then
+through processor 3.
+
+=head1 NAME
+
+XML::Filter::Distributor - Multipass processing of documents
+
+=head1 METHODS
+
+=over
+
+=item new
+
+    my $d = XML::Filter::Distributor->new(
+        { Handler => $h1 },
+        { Handler => $h2 },
+        ...
+    );
+
+A channel may be any SAX machine, frequently they are pipelines.
+
+=item set_handlers
+
+    $p->set_handlers( $handler1, $handler2 );
+
+Provided for compatability with other SAX processors, use set_handlers
+instead.
+
+=item set_handler
+
+Provided for compatability with other SAX processors, use set_handlers
+instead.
+
 =head1 LIMITATIONS
 
 Can only feed a single aggregator at the moment :).  I can fix this with
@@ -267,8 +283,25 @@ a bit of effort.
 You may use this module under the terms of the Artistic, GPL, or the BSD
 licenses.
 
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
 =cut
-
-
-
-1;

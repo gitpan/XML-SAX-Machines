@@ -1,8 +1,135 @@
 package XML::Filter::Tee;
+{
+  $XML::Filter::Tee::VERSION = '0.43'; # TRIAL
+}
+# ABSTRACT: Send SAX events to multiple processor, with switching
+
+
+
+use strict;
+use Carp;
+use XML::SAX::Base;
+use XML::SAX::EventMethodMaker qw( compile_methods sax_event_names );
+
+
+sub new {
+    my $proto = shift;
+    my $self = bless {}, ref $proto || $proto;
+
+    $self->{DisabledHandlers} = [];
+
+    $self->set_handlers( @_ );
+
+    return $self;
+}
+
+
+
+sub set_handlers {
+    my $self = shift;
+
+    $self->{Handlers} = [
+        map XML::SAX::Base->new(
+            ref $_ eq "HASH"
+                ? %$_
+                : { Handler => $_ }
+        ), @_
+    ];
+}
+
+
+
+sub disable_handlers {
+    my $self = shift;
+
+    croak "Can only disable one handler" if @_ > 1;
+    my ( $which ) = @_;
+
+    my $hs = $self->{Handlers};
+
+    if ( ref $which ) {
+        for my $i ( 0..$#$hs ) {
+            next unless $hs->[$i];
+            if ( $hs->[$i] == $which ) {
+                $self->{DisabledHandlers}->[$i] = $hs->[$i];
+                $hs->[$i] = undef;
+            }
+        }
+    }
+    elsif ( $which =~ /^\d+(?!\n)$/ ) {
+        $self->{DisabledHandlers}->[$which] = $hs;
+        $self->{Handlers}->[$which] = undef;
+    }
+    else {
+        for my $i ( 0..$#$hs ) {
+            next unless $hs->[$i];
+            if ( $hs->[$i]->{Name} eq $which ) {
+                $self->{DisabledHandlers}->[$i] = $hs->[$i];
+                $hs->[$i] = undef;
+            }
+        }
+    }
+}
+
+
+sub enable_handlers {
+    my $self = shift;
+
+    croak "Can only enable one handler" if @_ > 1;
+    my ( $which ) = @_;
+
+    my $hs = $self->{Handlers};
+
+    if ( ref $which ) {
+        for my $i ( 0..$#$hs ) {
+            next unless $hs->[$i];
+            if ( $hs->[$i] == $which ) {
+                $hs->[$i] = $self->{DisabledHandlers}->[$i];
+                $self->{DisabledHandlers}->[$i] = undef;
+            }
+        }
+    }
+    elsif ( $which =~ /^\d+(?!\n)$/ ) {
+        $hs->[$which] = $self->{DisabledHandlers}->[$which];
+        $self->{DisabledHandlers}->[$which] = undef;
+    }
+    else {
+        for my $i ( 0..$#$hs ) {
+            next unless $hs->[$i];
+            if ( $hs->[$i]->{Name} eq $which ) {
+                $hs->[$i] = $self->{DisabledHandlers}->[$i];
+                $self->{DisabledHandlers}->[$i] = undef;
+            }
+        }
+    }
+}
+
+
+compile_methods( __PACKAGE__, <<'FOO', sax_event_names );
+sub <EVENT> {
+    my $self = shift;
+    for ( @{$self->{Handlers}} ) {
+        next unless defined $_;
+        $_-><EVENT>( @_ );
+    }
+}
+FOO
+
+
+
+1;
+
+__END__
+
+=pod
 
 =head1 NAME
 
 XML::Filter::Tee - Send SAX events to multiple processor, with switching
+
+=head1 VERSION
+
+version 0.43
 
 =head1 SYNOPSIS
 
@@ -51,14 +178,9 @@ difficult or impossibly to copy properly, like parts of a C-based DOM
 implementation.  This means that the handlers must not alter the events
 or later handlers will see the alterations.
 
-=cut
+=head1 NAME
 
-$VERSION = 0.1;
-
-use strict;
-use Carp;
-use XML::SAX::Base;
-use XML::SAX::EventMethodMaker qw( compile_methods sax_event_names );
+XML::Filter::Tee - Send SAX events to multiple processor, with switching
 
 =head1 METHODS
 
@@ -72,20 +194,6 @@ use XML::SAX::EventMethodMaker qw( compile_methods sax_event_names );
         { Handler => $h2 },
         ...
     );
-
-=cut
-
-sub new {
-    my $proto = shift;
-    my $self = bless {}, ref $proto || $proto;
-
-    $self->{DisabledHandlers} = [];
-
-    $self->set_handlers( @_ );
-
-    return $self;
-}
-
 
 =item set_handlers
 
@@ -113,21 +221,6 @@ Can also name handlers to make enabling/disabling them by name easier:
 
     $m->disable_handler( "Validator" );
 
-=cut
-
-sub set_handlers {
-    my $self = shift;
-
-    $self->{Handlers} = [
-        map XML::SAX::Base->new(
-            ref $_ eq "HASH"
-                ? %$_
-                : { Handler => $_ }
-        ), @_
-    ];
-}
-
-
 =item disable_handler
 
     $t->disable_handler( 0 );            ## By location
@@ -136,40 +229,6 @@ sub set_handlers {
 
 Stops sending events to the indicated handler.
 
-=cut
-
-sub disable_handlers {
-    my $self = shift;
-
-    croak "Can only disable one handler" if @_ > 1;
-    my ( $which ) = @_;
-
-    my $hs = $self->{Handlers};
-
-    if ( ref $which ) {
-        for my $i ( 0..$#$hs ) {
-            next unless $hs->[$i];
-            if ( $hs->[$i] == $which ) {
-                $self->{DisabledHandlers}->[$i] = $hs->[$i];
-                $hs->[$i] = undef;
-            }
-        }
-    }
-    elsif ( $which =~ /^\d+(?!\n)$/ ) {
-        $self->{DisabledHandlers}->[$which] = $hs;
-        $self->{Handlers}->[$which] = undef;
-    }
-    else {
-        for my $i ( 0..$#$hs ) {
-            next unless $hs->[$i];
-            if ( $hs->[$i]->{Name} eq $which ) {
-                $self->{DisabledHandlers}->[$i] = $hs->[$i];
-                $hs->[$i] = undef;
-            }
-        }
-    }
-}
-
 =item enable_handler
 
     $t->enable_handler( 0 );            ## By location
@@ -177,52 +236,6 @@ sub disable_handlers {
     $t->enable_handler( $h0 );          ## By reference
 
 Stops sending events to the indicated handler.
-
-=cut
-
-sub enable_handlers {
-    my $self = shift;
-
-    croak "Can only enable one handler" if @_ > 1;
-    my ( $which ) = @_;
-
-    my $hs = $self->{Handlers};
-
-    if ( ref $which ) {
-        for my $i ( 0..$#$hs ) {
-            next unless $hs->[$i];
-            if ( $hs->[$i] == $which ) {
-                $hs->[$i] = $self->{DisabledHandlers}->[$i];
-                $self->{DisabledHandlers}->[$i] = undef;
-            }
-        }
-    }
-    elsif ( $which =~ /^\d+(?!\n)$/ ) {
-        $hs->[$which] = $self->{DisabledHandlers}->[$which];
-        $self->{DisabledHandlers}->[$which] = undef;
-    }
-    else {
-        for my $i ( 0..$#$hs ) {
-            next unless $hs->[$i];
-            if ( $hs->[$i]->{Name} eq $which ) {
-                $hs->[$i] = $self->{DisabledHandlers}->[$i];
-                $self->{DisabledHandlers}->[$i] = undef;
-            }
-        }
-    }
-}
-
-
-compile_methods( __PACKAGE__, <<'FOO', sax_event_names );
-sub <EVENT> {
-    my $self = shift;
-    for ( @{$self->{Handlers}} ) {
-        next unless defined $_;
-        $_-><EVENT>( @_ );
-    }
-}
-FOO
-
 
 =back
 
@@ -237,6 +250,25 @@ FOO
 You may use this module under the terms of the Artistic, GNU Public, or
 BSD licenses, as you choose.
 
-=cut
+=head1 AUTHORS
 
-1;
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

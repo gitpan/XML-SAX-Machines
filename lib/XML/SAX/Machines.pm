@@ -1,76 +1,10 @@
 package XML::SAX::Machines;
+{
+  $XML::SAX::Machines::VERSION = '0.43'; # TRIAL
+}
 
-$VERSION = 0.42;
+# ABSTRACT: manage collections of SAX processors
 
-=head1 NAME
-
-    XML::SAX::Machines - manage collections of SAX processors
-
-=head1 SYNOPSIS
-
-    use XML::SAX::Machines qw( :all );
-
-    my $m = Pipeline(
-        "My::Filter1",   ## My::Filter1 autoloaded in Pipeline()
-        "My::Filter2",   ## My::Filter2     "       "      "
-        \*STDOUT,        ## XML::SAX::Writer also loaded
-    );
-
-    $m->parse_uri( $uri ); ## A parser is autoloaded via
-                           ## XML::SAX::ParserFactory if
-                           ## My::Filter1 isn't a parser.
-
-    ## To import only individual machines:
-    use XML::SAX::Machines qw( Manifold );
-
-    ## Here's a multi-pass machine that reads one document, runs
-    ## it through 5 filtering channels (one channel at a time) and
-    ## reassembles it in to a single document.
-    my $m = Manifold(
-        "My::TableOfContentsExtractor",
-        "My::AbstractExtractor",
-        "My::BodyFitler",
-        "My::EndNotesFilter",
-        "My::IndexFilter",
-    );
-
-    $m->parse_string( $doc );
-
-
-
-=head1 DESCRIPTION
-
-SAX machines are a way to gather and manage SAX processors without going
-nuts.  Or at least without going completely nuts.  Individual machines
-can also be like SAX processors; they don't need to parse or write
-anything:
-
-   my $w = XML::SAX::Writer->new( Output => \*STDOUT );
-   my $m = Pipeline( "My::Filter1", "My::Filter2", { Handler => $w } );
-   my $p = XML::SAX::ParserFactory->new( handler => $p );
-
-More documentation to come; see L<XML::SAX::Pipeline>,
-L<XML::SAX::Manifold>, and L<XML::SAX::Machine> for now.
-
-Here are the machines this module knows about:
-
-    ByRecord  Record oriented processing of documents.
-              L<XML::SAX::ByRecord>
-
-    Machine   Generic "directed graph of SAX processors" machines.
-              L<XML::SAX::Machine>
-
-    Manifold  Multipass document processing
-              L<XML::SAX::Manifold>
-
-    Pipeline  A linear sequence of SAX processors
-              L<XML::SAX::Pipeline>
-
-    Tap       An insertable pass through that examines the
-              events without altering them using SAX processors.
-              L<XML::SAX::Tap>
-
-=cut
 
 use strict;
 use Carp;
@@ -112,45 +46,6 @@ sub import {
     goto &Exporter::import;
 }
 
-=head2 Config file
-
-As mentioned in L</LIMITATIONS>, you might occasionally need to edit the config
-file to tell XML::SAX::Machine how to handle a particular SAX processor (SAX
-processors use a wide variety of API conventions).
-
-The config file is a the Perl module XML::SAX::Machines::SiteConfig, which
-contains a Perl data structure like:
-
-    package XML::SAX::Machines::SiteConfig;
-
-    $ProcessorClassOptions = {
-        "XML::Filter::Tee" => {
-            ConstructWithHashedOptions => 1,
-        },
-    };
-
-So far $Processors is the only available configuration structure.  It contains
-a list of SAX processors with known special needs.
-
-Also, so far the only special need is the ConstructWithHashes option which
-tells XML::SAX::Machine to construct such classes like:
-
-    XML::Filter::Tee->new(
-        { Handler => $h }
-    );
-
-instead of
-
-    XML::Filter::Tee->new( Handler => $h );
-
-B<WARNING> If you modify anything, modify only
-XML::SAX::Machines::SiteConfig.pm.  Don't alter
-XML::SAX::Machines::ConfigDefaults.pm or you will lose your changes when you
-upgrade.
-
-TODO: Allow per-app and per-machine overrides of options.  When needed.
-
-=cut
 
 sub _read_config {
     delete $INC{"XML/SAX/Machines/ConfigDefaults.pm"};
@@ -318,7 +213,122 @@ sub expected_processor_class_options {
 #=cut
 
 1;
+
 __END__
+
+=pod
+
+=head1 NAME
+
+XML::SAX::Machines - manage collections of SAX processors
+
+=head1 VERSION
+
+version 0.43
+
+=head1 SYNOPSIS
+
+    use XML::SAX::Machines qw( :all );
+
+    my $m = Pipeline(
+        "My::Filter1",   ## My::Filter1 autoloaded in Pipeline()
+        "My::Filter2",   ## My::Filter2     "       "      "
+        \*STDOUT,        ## XML::SAX::Writer also loaded
+    );
+
+    $m->parse_uri( $uri ); ## A parser is autoloaded via
+                           ## XML::SAX::ParserFactory if
+                           ## My::Filter1 isn't a parser.
+
+    ## To import only individual machines:
+    use XML::SAX::Machines qw( Manifold );
+
+    ## Here's a multi-pass machine that reads one document, runs
+    ## it through 5 filtering channels (one channel at a time) and
+    ## reassembles it in to a single document.
+    my $m = Manifold(
+        "My::TableOfContentsExtractor",
+        "My::AbstractExtractor",
+        "My::BodyFitler",
+        "My::EndNotesFilter",
+        "My::IndexFilter",
+    );
+
+    $m->parse_string( $doc );
+
+=head1 DESCRIPTION
+
+SAX machines are a way to gather and manage SAX processors without going
+nuts.  Or at least without going completely nuts.  Individual machines
+can also be like SAX processors; they don't need to parse or write
+anything:
+
+   my $w = XML::SAX::Writer->new( Output => \*STDOUT );
+   my $m = Pipeline( "My::Filter1", "My::Filter2", { Handler => $w } );
+   my $p = XML::SAX::ParserFactory->new( handler => $p );
+
+More documentation to come; see L<XML::SAX::Pipeline>,
+L<XML::SAX::Manifold>, and L<XML::SAX::Machine> for now.
+
+Here are the machines this module knows about:
+
+    ByRecord  Record oriented processing of documents.
+              L<XML::SAX::ByRecord>
+
+    Machine   Generic "directed graph of SAX processors" machines.
+              L<XML::SAX::Machine>
+
+    Manifold  Multipass document processing
+              L<XML::SAX::Manifold>
+
+    Pipeline  A linear sequence of SAX processors
+              L<XML::SAX::Pipeline>
+
+    Tap       An insertable pass through that examines the
+              events without altering them using SAX processors.
+              L<XML::SAX::Tap>
+
+=head2 Config file
+
+As mentioned in L</LIMITATIONS>, you might occasionally need to edit the config
+file to tell XML::SAX::Machine how to handle a particular SAX processor (SAX
+processors use a wide variety of API conventions).
+
+The config file is a the Perl module XML::SAX::Machines::SiteConfig, which
+contains a Perl data structure like:
+
+    package XML::SAX::Machines::SiteConfig;
+
+    $ProcessorClassOptions = {
+        "XML::Filter::Tee" => {
+            ConstructWithHashedOptions => 1,
+        },
+    };
+
+So far $Processors is the only available configuration structure.  It contains
+a list of SAX processors with known special needs.
+
+Also, so far the only special need is the ConstructWithHashes option which
+tells XML::SAX::Machine to construct such classes like:
+
+    XML::Filter::Tee->new(
+        { Handler => $h }
+    );
+
+instead of
+
+    XML::Filter::Tee->new( Handler => $h );
+
+B<WARNING> If you modify anything, modify only
+XML::SAX::Machines::SiteConfig.pm.  Don't alter
+XML::SAX::Machines::ConfigDefaults.pm or you will lose your changes when you
+upgrade.
+
+TODO: Allow per-app and per-machine overrides of options.  When needed.
+
+=head1 NAME
+
+    XML::SAX::Machines - manage collections of SAX processors
 
 =head1 AUTHORS
 
@@ -329,5 +339,26 @@ Barrie Slaymaker
 Copyright 2002-2009 by Barrie Slaymaker.
 
 This software is free.  It is licensed under the same terms as Perl itself.
+
+=head1 AUTHORS
+
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut

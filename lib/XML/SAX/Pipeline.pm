@@ -1,8 +1,44 @@
 package XML::SAX::Pipeline;
+{
+  $XML::SAX::Pipeline::VERSION = '0.43'; # TRIAL
+}
+# ABSTRACT: Manage a linear pipeline of SAX processors
+
+
+use base qw( XML::SAX::Machine );
+
+
+use strict;
+use Carp;
+
+
+sub new {
+    my $proto = shift;
+    my $options = @_ && ref $_[-1] eq "HASH" ? pop : {};
+
+    my $stage_number = 0;
+    my @machine_spec = map [ "Stage_" . $stage_number++, $_ ], @_;
+    push @{$machine_spec[$_]}, $_ + 1 for 0..$#machine_spec-1 ;
+    $machine_spec[0]->[0] = "Intake"   if @machine_spec;
+    push @{$machine_spec[-1]}, "Exhaust" if @machine_spec;
+
+    return $proto->SUPER::new( @machine_spec, $options );
+}
+
+
+1;
+
+__END__
+
+=pod
 
 =head1 NAME
 
 XML::SAX::Pipeline - Manage a linear pipeline of SAX processors
+
+=head1 VERSION
+
+version 0.43
 
 =head1 SYNOPSIS
 
@@ -56,7 +92,6 @@ As with all SAX machines, a pipeline can also create an ad hoc parser
 (using L<XML::SAX::ParserFactory>) if you ask it to parse something and
 the first SAX processer in the pipeline can't handle a parse request:
 
-
    +-------------------------------------------------------+
    |                 An XML:SAX::Pipeline                  |
    |                 Intake                                |
@@ -104,14 +139,9 @@ tap in a pipeline (or other machine):
        ">output_file.xml",
    );
 
-=cut
+=head1 NAME
 
-use base qw( XML::SAX::Machine );
-
-$VERSION = 0.1;
-
-use strict;
-use Carp;
+XML::SAX::Pipeline - Manage a linear pipeline of SAX processors
 
 =head1 METHODS
 
@@ -126,21 +156,6 @@ See L<XML::SAX::Machine> for most of the methods.
 Creates a pipeline and links all of the given processors together.  Longhand
 for Pipeline().
 
-=cut
-
-sub new {
-    my $proto = shift;
-    my $options = @_ && ref $_[-1] eq "HASH" ? pop : {};
-
-    my $stage_number = 0;
-    my @machine_spec = map [ "Stage_" . $stage_number++, $_ ], @_;
-    push @{$machine_spec[$_]}, $_ + 1 for 0..$#machine_spec-1 ;
-    $machine_spec[0]->[0] = "Intake"   if @machine_spec;
-    push @{$machine_spec[-1]}, "Exhaust" if @machine_spec;
-
-    return $proto->SUPER::new( @machine_spec, $options );
-}
-
 =back
 
 =head1 AUTHOR
@@ -154,6 +169,25 @@ sub new {
 You may use this module under the terms of the Artistic, GNU Public,
 or BSD licenses, your choice.
 
-=cut
+=head1 AUTHORS
 
-1;
+=over 4
+
+=item *
+
+Barry Slaymaker
+
+=item *
+
+Chris Prather <chris@prather.org>
+
+=back
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Barry Slaymaker.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut

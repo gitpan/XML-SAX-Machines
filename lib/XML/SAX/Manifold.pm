@@ -1,6 +1,6 @@
 package XML::SAX::Manifold;
 {
-  $XML::SAX::Manifold::VERSION = '0.43'; # TRIAL
+  $XML::SAX::Manifold::VERSION = '0.44';
 }
 # ABSTRACT: Multipass processing of documents
 
@@ -45,7 +45,7 @@ XML::SAX::Manifold - Multipass processing of documents
 
 =head1 VERSION
 
-version 0.43
+version 0.44
 
 =head1 SYNOPSIS
 

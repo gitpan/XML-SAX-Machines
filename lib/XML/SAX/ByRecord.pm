@@ -1,6 +1,6 @@
 package XML::SAX::ByRecord;
 {
-  $XML::SAX::ByRecord::VERSION = '0.43'; # TRIAL
+  $XML::SAX::ByRecord::VERSION = '0.44';
 }
 # ABSTRACT: Record oriented processing of (data) documents
 
@@ -55,7 +55,7 @@ XML::SAX::ByRecord - Record oriented processing of (data) documents
 
 =head1 VERSION
 
-version 0.43
+version 0.44
 
 =head1 SYNOPSIS
 

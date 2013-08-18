@@ -1,0 +1,13 @@
+#!/usr/local/perlbrew/perls/perl-5.14.2/bin/perl
+
+use strict;
+use warnings;
+
+use lib '/home/perigrin/dev/xml-sax-machines/local/lib/perl5';
+use local::lib '/home/perigrin/dev/xml-sax-machines/local';
+
+unless ( caller ) {
+    if ( @ARGV ) {
+        exec @ARGV;
+    }
+}

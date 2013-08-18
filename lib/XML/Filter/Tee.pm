@@ -1,6 +1,6 @@
 package XML::Filter::Tee;
 {
-  $XML::Filter::Tee::VERSION = '0.43'; # TRIAL
+  $XML::Filter::Tee::VERSION = '0.44';
 }
 # ABSTRACT: Send SAX events to multiple processor, with switching
 
@@ -129,7 +129,7 @@ XML::Filter::Tee - Send SAX events to multiple processor, with switching
 
 =head1 VERSION
 
-version 0.43
+version 0.44
 
 =head1 SYNOPSIS
 

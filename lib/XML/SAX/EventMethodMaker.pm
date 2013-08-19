@@ -1,6 +1,6 @@
 package XML::SAX::EventMethodMaker;
 {
-  $XML::SAX::EventMethodMaker::VERSION = '0.44';
+  $XML::SAX::EventMethodMaker::VERSION = '0.45';
 }
 # ABSTRACT: SAX event names, creation of methods from templates
 
@@ -218,7 +218,7 @@ XML::SAX::EventMethodMaker - SAX event names, creation of methods from templates
 
 =head1 VERSION
 
-version 0.44
+version 0.45
 
 =head1 SYNOPSIS
 

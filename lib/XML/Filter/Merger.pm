@@ -1,6 +1,6 @@
 package XML::Filter::Merger;
 {
-  $XML::Filter::Merger::VERSION = '0.44';
+  $XML::Filter::Merger::VERSION = '0.45';
 }
 
 # ABSTRACT: Assemble multiple SAX streams in to one document
@@ -255,7 +255,7 @@ XML::Filter::Merger - Assemble multiple SAX streams in to one document
 
 =head1 VERSION
 
-version 0.44
+version 0.45
 
 =head1 SYNOPSIS
 

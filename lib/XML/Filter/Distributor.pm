@@ -1,6 +1,6 @@
 package XML::Filter::Distributor;
 {
-  $XML::Filter::Distributor::VERSION = '0.44';
+  $XML::Filter::Distributor::VERSION = '0.45';
 }
 # ABSTRACT: Multipass processing of documents
 
@@ -162,7 +162,7 @@ XML::Filter::Distributor - Multipass processing of documents
 
 =head1 VERSION
 
-version 0.44
+version 0.45
 
 =head1 SYNOPSIS
 

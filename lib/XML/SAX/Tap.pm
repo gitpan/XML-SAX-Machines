@@ -1,6 +1,6 @@
 package XML::SAX::Tap;
 {
-  $XML::SAX::Tap::VERSION = '0.44';
+  $XML::SAX::Tap::VERSION = '0.45';
 }
 # ABSTRACT: Tap a pipeline of SAX processors
 
@@ -46,7 +46,7 @@ XML::SAX::Tap - Tap a pipeline of SAX processors
 
 =head1 VERSION
 
-version 0.44
+version 0.45
 
 =head1 SYNOPSIS
 

@@ -1,6 +1,6 @@
 package XML::SAX::Machines::ConfigHelper;
 {
-  $XML::SAX::Machines::ConfigHelper::VERSION = '0.44';
+  $XML::SAX::Machines::ConfigHelper::VERSION = '0.45';
 }
 
 # ABSTRACT: lib/XML/SAX/Machines/ConfigHelper.pm
@@ -79,7 +79,7 @@ XML::SAX::Machines::ConfigHelper - lib/XML/SAX/Machines/ConfigHelper.pm
 
 =head1 VERSION
 
-version 0.44
+version 0.45
 
 =head1 SYNOPSIS
 

@@ -1,6 +1,6 @@
 package XML::SAX::Machine;
 {
-  $XML::SAX::Machine::VERSION = '0.45';
+  $XML::SAX::Machine::VERSION = '0.46';
 }
 # ABSTRACT: Manage a collection of SAX processors
 
@@ -1114,7 +1114,7 @@ sub generate_description {
 ##
 package XML::SAX::Machine::Part;
 {
-  $XML::SAX::Machine::Part::VERSION = '0.45';
+  $XML::SAX::Machine::Part::VERSION = '0.46';
 }
 
 use fields (
@@ -1166,7 +1166,7 @@ XML::SAX::Machine - Manage a collection of SAX processors
 
 =head1 VERSION
 
-version 0.45
+version 0.46
 
 =head1 SYNOPSIS
 

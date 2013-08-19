@@ -15,7 +15,7 @@
 
 package XML::SAX::Machines::ConfigDefaults;
 {
-  $XML::SAX::Machines::ConfigDefaults::VERSION = '0.45';
+  $XML::SAX::Machines::ConfigDefaults::VERSION = '0.46';
 }
 
 $LegalProcessorClassOptions = {
@@ -61,7 +61,7 @@ XML::SAX::Machines::ConfigDefaults
 
 =head1 VERSION
 
-version 0.45
+version 0.46
 
 =head1 AUTHORS
 

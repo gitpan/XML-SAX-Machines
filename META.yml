@@ -25,4 +25,4 @@ requires:
 resources:
   homepage: https://github.com/perigrin/xml-sax-machines
   repository: https://github.com/perigrin/xml-sax-machines.git
-version: 0.45
+version: 0.46

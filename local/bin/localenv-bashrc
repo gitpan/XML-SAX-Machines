@@ -1,1 +1,0 @@
-eval $(/usr/local/perlbrew/perls/perl-5.14.2/bin/perl -I/home/perigrin/dev/xml-sax-machines/local/lib/perl5 -Mlocal::lib=/home/perigrin/dev/xml-sax-machines/local)

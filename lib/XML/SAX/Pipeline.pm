@@ -1,6 +1,6 @@
 package XML::SAX::Pipeline;
 {
-  $XML::SAX::Pipeline::VERSION = '0.45';
+  $XML::SAX::Pipeline::VERSION = '0.46';
 }
 # ABSTRACT: Manage a linear pipeline of SAX processors
 
@@ -38,7 +38,7 @@ XML::SAX::Pipeline - Manage a linear pipeline of SAX processors
 
 =head1 VERSION
 
-version 0.45
+version 0.46
 
 =head1 SYNOPSIS
 

@@ -1,6 +1,6 @@
 package XML::SAX::Machines;
 {
-  $XML::SAX::Machines::VERSION = '0.45';
+  $XML::SAX::Machines::VERSION = '0.46';
 }
 
 # ABSTRACT: manage collections of SAX processors
@@ -224,7 +224,7 @@ XML::SAX::Machines - manage collections of SAX processors
 
 =head1 VERSION
 
-version 0.45
+version 0.46
 
 =head1 SYNOPSIS
 

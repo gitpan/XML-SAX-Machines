@@ -1,6 +1,6 @@
 package XML::Filter::DocSplitter;
 {
-  $XML::Filter::DocSplitter::VERSION = '0.45';
+  $XML::Filter::DocSplitter::VERSION = '0.46';
 }
 # ABSTRACT: Multipass processing of documents
 
@@ -188,7 +188,7 @@ XML::Filter::DocSplitter - Multipass processing of documents
 
 =head1 VERSION
 
-version 0.45
+version 0.46
 
 =head1 SYNOPSIS
 
